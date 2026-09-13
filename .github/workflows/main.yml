@@ -26,8 +26,17 @@ jobs:
 
     - name: Jalankan Libvirtd Tanpa Systemd
       run: |
+        echo "Membersihkan sisa-sisa proses libvirtd lama jika ada..."
+        # Mematikan libvirtd bawaan agar tidak berebut pidfile
+        sudo pkill -9 libvirtd || true
+        sudo rm -f /var/run/libvirtd.pid
+        
+        echo "Menyalakan ulang daemon libvirtd secara bersih..."
         sudo /usr/sbin/libvirtd -d
         sleep 5
+        
+        # Memastikan libvirt sudah aktif dan merespons jaringan default
+        sudo virsh net-list --all
 
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
