@@ -36,14 +36,17 @@ jobs:
         sudo mkdir -p /var/run/libvirt
         sudo chmod 755 /var/run/libvirt
         
-        echo "Menyalakan daemon virtlogd (Solusi Error virtlogd-sock)..."
-        # Menyalakan daemon logging di background agar berkas virtlogd-sock terbuat
+        echo "Menyalakan daemon virtlogd..."
         sudo /usr/sbin/virtlogd -d
         sleep 2
 
         echo "Menyalakan daemon libvirtd..."
         sudo /usr/sbin/libvirtd -d
         sleep 5
+
+        echo "MEMATIKAN PROSES DNSMASQ LIAR (Solusi Akhir Address already in use)..."
+        # Trik Utama: Mematikan paksa dnsmasq bawaan hantu yang mengunci IP 192.168.122.1
+        sudo pkill -9 dnsmasq || true
 
         echo "Menghancurkan total antarmuka virbr0 yang menyebabkan bentrok..."
         sudo ip link set dev virbr0 down || true
