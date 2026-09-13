@@ -28,7 +28,7 @@ jobs:
         sudo chmod 755 /home/runner
         sudo chmod 755 /home/runner/work
         
-    - name: Jalankan Libvirtd Tanpa Systemd
+     - name: Jalankan Libvirtd Tanpa Systemd
       run: |
         sudo rm -f /var/run/libvirtd.pid
         sudo rm -rf /var/run/libvirt/*
@@ -39,15 +39,24 @@ jobs:
         sudo /usr/sbin/libvirtd -d
         sleep 5
 
-        echo "Membangun dan mengaktifkan jaringan default libvirt..."
-        # Trik Utama: Jika jaringan default hilang atau tidak aktif, kita bangun ulang secara paksa
-        sudo virsh net-define /usr/share/libvirt/networks/default.xml || true
-        sudo virsh net-start default || true
-        sudo virsh net-autostart default || true
+        echo "Menghancurkan jembatan jaringan lama yang menyebabkan bentrok..."
+        # Menurunkan antarmuka virbr0 dan menghapusnya dari kernel Linux
+        sudo ip link set dev virbr0 down || true
+        sudo brctl delbr virbr0 || true
         
-        echo "Memeriksa status jaringan (Wajib bertuliskan 'active'):"
+        echo "Membangun ulang konfigurasi jaringan default secara bersih..."
+        # Menghapus paksa definisi lama jika ada yang menyangkut
+        sudo virsh net-destroy default || true
+        sudo virsh net-undefine default || true
+        
+        # Mendefinisikan ulang dan menyalakan dari awal
+        sudo virsh net-define /usr/share/libvirt/networks/default.xml
+        sudo virsh net-start default
+        sudo virsh net-autostart default
+        
+        echo "Memeriksa status jaringan terbaru (Wajib bertuliskan 'active'):"
         sudo virsh net-list --all
-
+        
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
         # Solusi Kapasitas: Kita buat folder penyimpanan disk di direktori workspace runner yang luas (Bukan di /var/lib/...)
