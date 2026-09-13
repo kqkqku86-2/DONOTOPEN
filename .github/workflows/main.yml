@@ -23,38 +23,30 @@ jobs:
       run: |
         sudo chmod 666 /dev/kvm
         sudo chmod 666 /var/run/libvirt/libvirt-sock
+        
+        # Solusi Hak Akses ISO: Berikan izin akses penuh ke folder runner agar qemu bisa membaca file ISO
+        sudo chmod 755 /home/runner
+        sudo chmod 755 /home/runner/work
 
     - name: Jalankan Libvirtd Tanpa Systemd
       run: |
-        echo "Membersihkan sisa pidfile dan socket lama..."
         sudo rm -f /var/run/libvirtd.pid
         sudo rm -rf /var/run/libvirt/*
-
-        echo "Membuat direktori socket libvirt..."
         sudo mkdir -p /var/run/libvirt
         sudo chmod 755 /var/run/libvirt
-
-        echo "Menyalakan daemon libvirtd secara bersih tanpa parameter listen..."
-        # Menghapus parameter --listen agar tidak error nyari sertifikat TLS
         sudo /usr/sbin/libvirtd -d
         sleep 5
-
-        echo "Memeriksa apakah berkas socket lokal berhasil terbuat..."
-        ls -la /var/run/libvirt/
-
-        echo "Mengecek status jaringan default libvirt..."
-        sudo virsh net-list --all || echo "Jaringan belum aktif, mencoba menyalakan manual..."
         sudo virsh net-start default || true
-        
+
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
-        # Membuat folder internal libvirt jika belum ada
-        sudo mkdir -p /var/lib/libvirt/images/
-        sudo chmod 777 /var/lib/libvirt/images/
+        # Solusi Kapasitas: Kita buat folder penyimpanan disk di direktori workspace runner yang luas (Bukan di /var/lib/...)
+        sudo mkdir -p /home/runner/work/kvm_storage
+        sudo chmod 777 /home/runner/work/kvm_storage
 
         if [ -f "win11-vm.qcow2" ]; then
-          echo "Harddisk dari sesi kemarin ditemukan! Memindahkannya ke sistem libvirt..."
-          sudo mv win11-vm.qcow2 /var/lib/libvirt/images/win11-vm.qcow2
+          echo "Harddisk dari sesi kemarin ditemukan! Memindahkannya ke storage luas..."
+          sudo mv win11-vm.qcow2 /home/runner/work/kvm_storage/win11-vm.qcow2
           echo "BOOT_MODE=saved" >> $GITHUB_ENV
         else
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
@@ -66,28 +58,29 @@ jobs:
     - name: Jalankan VM Menggunakan Virt-Install
       run: |
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
-          echo "Memulai VM baru dari CD-ROM..."
+          echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
+          # Menambahkan --check disk_size=off dan memindahkan jalur path disk ke kvm_storage
           sudo virt-install \
             --name=win11-vm \
-            --ram=6914 \
+            --ram=4096 \
             --vcpus=2 \
             --cpu host \
-            --disk path=/var/lib/libvirt/images/win11-vm.qcow2,size=64,format=qcow2,bus=virtio \
+            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,size=64,format=qcow2,bus=virtio \
             --cdrom=installer.iso \
             --os-variant=generic \
             --network network=default \
             --graphics vnc,listen=0.0.0.0,port=5901 \
+            --check disk_size=off \
             --noautoconsole \
             --wait=0
         else
-          echo "Memulai VM melanjutkan sesi kemarin..."
-          # Jika melanjutkannya, kita tidak perlu memasukkan argumen --cdrom lagi
+          echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
           sudo virt-install \
             --name=win11-vm \
-            --ram=6914 \
+            --ram=4096 \
             --vcpus=2 \
             --cpu host \
-            --disk path=/var/lib/libvirt/images/win11-vm.qcow2,format=qcow2,bus=virtio \
+            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,bus=virtio \
             --import \
             --os-variant=generic \
             --network network=default \
@@ -111,29 +104,26 @@ jobs:
 
     - name: Menunggu VM Dimatikan (Auto-Save Trigger)
       run: |
-        # Memantau status VM via virsh. Jika win11-vm dimatikan (shut off), loop ini selesai.
         while sudo virsh list --name | grep -q "win11-vm"; do
           sleep 5
         done
-        echo "VM terdeteksi mati secara aman. Memulai penarikan berkas harddisk..."
+        echo "VM terdeteksi mati secara aman. Memulai proses Auto-Save ke Cloud..."
 
     - name: Auto-Save Perubahan Harddisk ke GitHub
       run: |
-        # Ambil kembali file qcow2 dari folder sistem ke folder repositori
-        sudo mv /var/lib/libvirt/images/win11-vm.qcow2 ./win11-vm.qcow2
+        # Mengambil kembali file qcow2 dari folder kvm_storage luas ke folder repositori utama
+        sudo mv /home/runner/work/kvm_storage/win11-vm.qcow2 ./win11-vm.qcow2
         sudo chmod 666 win11-vm.qcow2
 
-        # Konfigurasi Git Bot
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@://github.com"
         
-        # Daftarkan ke Git LFS agar file besar tidak diblokir GitHub
         git lfs track "*.qcow2"
         git add .gitattributes
         
-        # Lakukan Push otomatis perubahan harddisk kamu ke repositori
         git add win11-vm.qcow2
         git commit -m "Auto-Save: Memperbarui berkas sistem virt-install sesi terakhir"
         git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
