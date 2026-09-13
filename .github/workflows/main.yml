@@ -34,15 +34,18 @@ jobs:
         sudo rm -rf /var/run/libvirt/*
         sudo mkdir -p /var/run/libvirt
         sudo chmod 755 /var/run/libvirt
+        
+        echo "Menyalakan daemon libvirtd..."
         sudo /usr/sbin/libvirtd -d
         sleep 5
-        
-        echo "Mengaktifkan jaringan default libvirt secara paksa..."
-        # Paksa jaringan default aktif dan otomatis menyala
+
+        echo "Membangun dan mengaktifkan jaringan default libvirt..."
+        # Trik Utama: Jika jaringan default hilang atau tidak aktif, kita bangun ulang secara paksa
+        sudo virsh net-define /usr/share/libvirt/networks/default.xml || true
         sudo virsh net-start default || true
         sudo virsh net-autostart default || true
         
-        # Cek status jaringan untuk memastikan statusnya sudah 'active'
+        echo "Memeriksa status jaringan (Wajib bertuliskan 'active'):"
         sudo virsh net-list --all
 
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
