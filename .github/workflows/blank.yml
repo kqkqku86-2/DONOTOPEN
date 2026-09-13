@@ -1,0 +1,20 @@
+name: Test Status KVM Hardware
+on: workflow_dispatch # Membuat tombol "Run" manual di tab Actions
+
+jobs:
+  check-kvm:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update Paket Sistem
+      run: sudo apt-get update
+
+    - name: Instal Alat Cek CPU (cpu-checker)
+      run: sudo apt-get install -y cpu-checker
+
+    - name: Jalankan Perintah KVM OK
+      run: |
+        echo "=================================================="
+        echo "SEDANG MEMERIKSA DUKUNGAN KVM DI GITHUB ACTIONS..."
+        echo "=================================================="
+        kvm-ok
+        echo "=================================================="
