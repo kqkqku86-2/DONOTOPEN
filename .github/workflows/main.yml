@@ -27,7 +27,7 @@ jobs:
         # Solusi Hak Akses ISO: Berikan izin akses penuh ke folder runner agar qemu bisa membaca file ISO
         sudo chmod 755 /home/runner
         sudo chmod 755 /home/runner/work
-
+        
     - name: Jalankan Libvirtd Tanpa Systemd
       run: |
         sudo rm -f /var/run/libvirtd.pid
@@ -36,7 +36,14 @@ jobs:
         sudo chmod 755 /var/run/libvirt
         sudo /usr/sbin/libvirtd -d
         sleep 5
+        
+        echo "Mengaktifkan jaringan default libvirt secara paksa..."
+        # Paksa jaringan default aktif dan otomatis menyala
         sudo virsh net-start default || true
+        sudo virsh net-autostart default || true
+        
+        # Cek status jaringan untuk memastikan statusnya sudah 'active'
+        sudo virsh net-list --all
 
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
@@ -59,23 +66,26 @@ jobs:
       run: |
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
-          # Menambahkan --check disk_size=off dan memindahkan jalur path disk ke kvm_storage
+          # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
+          # Menambahkan --check all=off untuk mengabaikan error jaringan dan ukuran pool
           sudo virt-install \
+            --connect=qemu:///system \
             --name=win11-vm \
             --ram=4096 \
             --vcpus=2 \
             --cpu host \
-            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,size=64,format=qcow2,bus=virtio \
+            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,size=64,format=qcow2,bus=virtio,sparse=true \
             --cdrom=installer.iso \
             --os-variant=generic \
             --network network=default \
             --graphics vnc,listen=0.0.0.0,port=5901 \
-            --check disk_size=off \
+            --check all=off \
             --noautoconsole \
             --wait=0
         else
           echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
           sudo virt-install \
+            --connect=qemu:///system \
             --name=win11-vm \
             --ram=4096 \
             --vcpus=2 \
@@ -85,6 +95,7 @@ jobs:
             --os-variant=generic \
             --network network=default \
             --graphics vnc,listen=0.0.0.0,port=5901 \
+            --check all=off \
             --noautoconsole \
             --wait=0
         fi
