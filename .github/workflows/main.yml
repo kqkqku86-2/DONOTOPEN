@@ -83,6 +83,7 @@ jobs:
     - name: Jalankan VM Menggunakan Virt-Install
       run: |
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
+          qemu-img create -f qcow2 /home/runner/work/kvm_storage/win11-vm.qcow2 64G
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
           # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
           # Menambahkan --check all=off untuk mengabaikan error jaringan dan ukuran pool
@@ -92,9 +93,10 @@ jobs:
             --ram=4096 \
             --vcpus=2 \
             --cpu host \
-            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,size=64,format=qcow2,bus=virtio,sparse=true \
+            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,bus=virtio,sparse=true \
             --cdrom=installer.iso \
             --os-variant=generic \
+            --boot hd,cdrom \
             --network network=default \
             --graphics vnc,listen=0.0.0.0,port=5901 \
             --check all=off \
