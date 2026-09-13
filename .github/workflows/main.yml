@@ -34,9 +34,24 @@ jobs:
       run: |
         # Mengubah VNC menjadi WebSocket di port 6080 agar bisa dibaca noVNC
         websockify --web /usr/share/novnc/ 6080 localhost:5901 &
-        sleep 3
+        sleep 5
+        
         echo "=================================================="
         echo "KLIK LINK DI BAWAH INI UNTUK MEMBUKA VM KAMU:"
         echo "=================================================="
-        # Membuat terowongan publik gratis, instan, tanpa kartu kredit!
-        ssh -o StrictHostKeyChecking=no -R 80:localhost:6080 nokey@localhost.run
+        
+        # Trik Baru: Menambahkan ServerAliveInterval dan membiarkannya berjalan di latar belakang
+        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -R 80:localhost:6080 nokey@localhost.run > tunnel.log 2>&1 &
+        
+        # Beri waktu 5 detik agar tautan localhost.run tercatat di dalam log
+        sleep 5
+        
+        # Membaca tautan .lhr.life dari file log dan menampilkannya di layar GitHub
+        cat tunnel.log
+        
+        echo "=================================================="
+        echo "VM KVM sedang berjalan! Mengunci terminal agar tidak mati..."
+        echo "=================================================="
+        
+        # Perintah ajaib untuk mengunci GitHub Actions agar tetap menyala selama 6 jam
+        sleep 21600
