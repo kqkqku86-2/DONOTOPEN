@@ -5,7 +5,7 @@ env:
   LIBVIRT_DEFAULT_URI: 'qemu:///system'
 
 jobs:
-  run-vm:
+   run-vm:
     runs-on: ubuntu-latest
     steps:
     - name: Clone Repositori
