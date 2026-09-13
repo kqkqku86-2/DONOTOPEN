@@ -1,0 +1,42 @@
+name: Jalankan VM KVM noVNC
+on: workflow_dispatch # Membuat tombol "Run" manual di GitHub
+
+jobs:
+  run-vm:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Instal QEMU dan Alat Jaringan
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qemu-system-x86 qemu-utils websockify novnc ssh
+
+    - name: Konfigurasi Hak Akses KVM (Chmod)
+      run: |
+        echo "Mengatur izin akses /dev/kvm..."
+        sudo chmod 666 /dev/kvm
+        ls -l /dev/kvm
+
+    - name: Unduh ISO OS Linux (Alpine)
+      run: |
+        # Mengunduh Alpine Linux karena sangat ringan untuk dijalankan di cloud
+        wget https://software.download.prss.microsoft.com/dbazure/Win11_25H2_English_x64_v2.iso?t=8860a928-86ac-4e3a-9517-df1595cbc93e&P1=1789375154&P2=602&P3=2&P4=c3Ofs2lZO9pnUr6hw6wpQIlg2OauaFtjJcBJ45In8UunTLerNhmJECP1m7sdtYLhcueij3NqCyWyBVloWq9Bqp%2f4L8Tt7%2fdmd3zlu9fYF81ljhG9X7F%2fhqlw%2fcPNLUkBi%2bHTV3H8zo5tEH7zaXxU7XgiNK6PpoIsNnqrDzuh9hkKSeWPPxixoTqNXN9%2b3jDnxjZlVMl%2bfKpTHxtEmbUI9yhiqHEaM1PRl7iH1IGKjloa2iztO37OI8TrPU%2bO0lzTeLhZqUS2yXskv1cLPwxxfPyG74klBNbdpygsoJnBBXcnZn5ASchcBM5iWQAYiMOe%2bmYssKZHSmey3hlVBnk0eg%3d%3d -O installer.iso
+
+    - name: Buat Harddisk Virtual
+      run: |
+        qemu-img create -f qcow2 disk.qcow2 64G
+
+    - name: Nyalakan VM dengan Akselerasi KVM Asli
+      run: |
+        # Menjalankan QEMU dengan KVM hardware, RAM 2GB, dan membuang display ke VNC port 5901
+        qemu-system-x86_64 -m 8014 -smp 4 -hda disk.qcow2 -cdrom installer.iso -boot d -accel kvm -vnc :1 &
+
+    - name: Jembatani dengan Websockify & Buka Jalur Link Browser
+      run: |
+        # Mengubah VNC menjadi WebSocket di port 6080 agar bisa dibaca noVNC
+        websockify --web /usr/share/novnc/ 6080 localhost:5901 &
+        sleep 3
+        echo "=================================================="
+        echo "KLIK LINK DI BAWAH INI UNTUK MEMBUKA VM KAMU:"
+        echo "=================================================="
+        # Membuat terowongan publik gratis, instan, tanpa kartu kredit!
+        ssh -o StrictHostKeyChecking=no -R 80:localhost:6080 nokey@localhost.run
