@@ -29,7 +29,7 @@ jobs:
         sudo chmod 755 /home/runner/work
         
      - name: Jalankan Libvirtd Tanpa Systemd
-      run: |
+       run: |
         sudo rm -f /var/run/libvirtd.pid
         sudo rm -rf /var/run/libvirt/*
         sudo mkdir -p /var/run/libvirt
