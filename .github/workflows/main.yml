@@ -27,20 +27,25 @@ jobs:
         # Solusi Hak Akses ISO: Berikan izin akses penuh ke folder runner agar qemu bisa membaca file ISO
         sudo chmod 755 /home/runner
         sudo chmod 755 /home/runner/work
-        
+
     - name: Jalankan Libvirtd Tanpa Systemd
       run: |
         sudo rm -f /var/run/libvirtd.pid
+        sudo rm -f /var/run/virtlogd.pid
         sudo rm -rf /var/run/libvirt/*
         sudo mkdir -p /var/run/libvirt
         sudo chmod 755 /var/run/libvirt
         
+        echo "Menyalakan daemon virtlogd (Solusi Error virtlogd-sock)..."
+        # Menyalakan daemon logging di background agar berkas virtlogd-sock terbuat
+        sudo /usr/sbin/virtlogd -d
+        sleep 2
+
         echo "Menyalakan daemon libvirtd..."
         sudo /usr/sbin/libvirtd -d
         sleep 5
 
         echo "Menghancurkan total antarmuka virbr0 yang menyebabkan bentrok..."
-        # Trik Baru: Mematikan dan MENGHAPUS kartu jaringan virtual dari kernel
         sudo ip link set dev virbr0 down || true
         sudo ip link delete dev virbr0 || true
         
@@ -48,7 +53,6 @@ jobs:
         sudo virsh net-destroy default || true
         sudo virsh net-undefine default || true
         
-        # Mendefinisikan ulang dan menyalakan kembali jaringan dari XML resmi
         sudo virsh net-define /usr/share/libvirt/networks/default.xml
         sudo virsh net-start default
         sudo virsh net-autostart default
