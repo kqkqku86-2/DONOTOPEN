@@ -28,7 +28,7 @@ jobs:
     - name: Nyalakan VM dengan Akselerasi KVM Asli
       run: |
         # Menjalankan QEMU dengan KVM hardware, RAM 2GB, dan membuang display ke VNC port 5901
-        qemu-system-x86_64 -m 8014 -smp 4 -hda disk.qcow2 -cdrom installer.iso -boot d -accel kvm -vnc :1 &
+        qemu-system-x86_64 -m 6914 -smp 2 -hda disk.qcow2 -cdrom installer.iso -boot d -accel kvm -vnc :1 &
 
     - name: Jembatani dengan Websockify & Buka Jalur Link Browser
       run: |
