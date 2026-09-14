@@ -72,7 +72,7 @@ jobs:
         sudo swtpm socket --tpmstate dir=/tmp/emulated_tpm \
         --ctrl type=unixio,path=/tmp/emulated_tpm/swtpm-sock \
         --tpm2 \
-        --daemonize
+        -d
         
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
