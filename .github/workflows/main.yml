@@ -95,7 +95,7 @@ jobs:
             --vcpus=2 \
             --cpu host \
             --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,bus=virtio \
-            --cdrom=installer.iso \
+            --cdrom=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso \
             --os-variant=generic \
             --boot hd,cdrom \
             --network network=default \
