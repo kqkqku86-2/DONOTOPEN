@@ -106,7 +106,7 @@ jobs:
           -m 4096 \
           -smp 2 \
           -cpu host \
-          -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd \
+          -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd \
           -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
           -tpmdev emulator,id=tpm0,chardev=chrtpm \
           -device tpm-tis,tpmdev=tpm0 \
@@ -125,7 +125,7 @@ jobs:
          -m 4096 \
          -smp 2 \
          -cpu host \
-         -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd \
+         -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd \
          -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
          -tpmdev emulator,id=tpm0,chardev=chrtpm \
          -device tpm-tis,tpmdev=tpm0 \
