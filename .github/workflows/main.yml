@@ -16,7 +16,7 @@ jobs:
     - name: Instal KVM, Virt-Install, Alat Jaringan & Git LFS
       run: |
         sudo apt-get update
-        sudo apt-get install -y qemu-kvm libvirt-daemon-system virtinst websockify novnc ssh osinfo-db-tools git-lfs
+        sudo apt-get install -y qemu-kvm libvirt-daemon-system virtinst websockify novnc ssh osinfo-db-tools git-lfs ovmf swtpm swtpm-tools
         git lfs install
 
     - name: Konfigurasi Hak Akses KVM & Libvirt
@@ -62,6 +62,17 @@ jobs:
         
         echo "Memeriksa status jaringan terbaru (Wajib bertuliskan 'active'):"
         sudo virsh net-list --all
+
+    - name: TPM
+      run: |
+        # Membuat direktori state untuk TPM
+        mkdir -p /tmp/emulated_tpm
+
+        # Menjalankan swtpm di latar belakang
+        sudo swtpm socket --tpmstate dir=/tmp/emulated_tpm \
+        --ctrl type=unixio,path=/tmp/emulated_tpm/swtpm-sock \
+        --tpm2 \
+        --daemonize
         
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
@@ -91,9 +102,14 @@ jobs:
           sudo qemu-system-x86_64 \
           -enable-kvm \
           -name win11-vm \
+          -machine q35 \
           -m 4096 \
           -smp 2 \
           -cpu host \
+          -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd \
+          -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
+          -tpmdev emulator,id=tpm0,chardev=chrtpm \
+          -device tpm-tis,tpmdev=tpm0 \
           -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
           -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,media=cdrom \
           -boot menu=on,order=dc \
@@ -103,16 +119,21 @@ jobs:
         else
           echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
           sudo qemu-system-x86_64 \
-          -enable-kvm \
-          -name win11-vm \
-          -m 4096 \
-          -smp 2 \
-          -cpu host \
-          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
-          -boot order=c \
-          -net nic,model=virtio -net user \
-          -vnc 0.0.0.0:1 \
-          -daemonize
+         -enable-kvm \
+         -name win11-vm \
+         -machine q35 \
+         -m 4096 \
+         -smp 2 \
+         -cpu host \
+         -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd \
+         -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
+         -tpmdev emulator,id=tpm0,chardev=chrtpm \
+         -device tpm-tis,tpmdev=tpm0 \
+         -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
+         -boot order=c \
+         -net nic,model=virtio -net user \
+         -vnc 0.0.0.0:1 \
+         -daemonize
         fi
 
     - name: Jembatani dengan Websockify & Buka Jalur Link Browser
