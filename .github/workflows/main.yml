@@ -88,37 +88,31 @@ jobs:
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
           # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
           # Menambahkan --check all=off untuk mengabaikan error jaringan dan ukuran pool
-          sudo virt-install \
-            --connect=qemu:///system \
-            --name=win11-vm \
-            --ram=4096 \
-            --vcpus=2 \
-            --cpu host \
-            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,bus=virtio \
-            --cdrom=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso \
-            --os-variant=generic \
-            --boot hd,cdrom \
-            --network network=default \
-            --graphics vnc,listen=0.0.0.0,port=5901 \
-            --check all=off \
-            --noautoconsole \
-            --wait=0
+          sudo qemu-system-x86_64 \
+          -enable-kvm \
+          -name win11-vm \
+          -m 4096 \
+          -smp 2 \
+          -cpu host \
+          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
+          -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,media=cdrom \
+          -boot menu=on,order=dc \
+          -net nic,model=virtio -net user \
+          -vnc 0.0.0.0:1 \
+          -daemonize
         else
           echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
-          sudo virt-install \
-            --connect=qemu:///system \
-            --name=win11-vm \
-            --ram=4096 \
-            --vcpus=2 \
-            --cpu host \
-            --disk path=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,bus=virtio \
-            --import \
-            --os-variant=generic \
-            --network network=default \
-            --graphics vnc,listen=0.0.0.0,port=5901 \
-            --check all=off \
-            --noautoconsole \
-            --wait=0
+          sudo qemu-system-x86_64 \
+          -enable-kvm \
+          -name win11-vm \
+          -m 4096 \
+          -smp 2 \
+          -cpu host \
+          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
+          -boot order=c \
+          -net nic,model=virtio -net user \
+          -vnc 0.0.0.0:1 \
+          -daemonize
         fi
 
     - name: Jembatani dengan Websockify & Buka Jalur Link Browser
@@ -137,8 +131,8 @@ jobs:
 
     - name: Menunggu VM Dimatikan (Auto-Save Trigger)
       run: |
-        while sudo virsh list --name | grep -q "win11-vm"; do
-          sleep 5
+        while pgrep -f "qemu-system-x86_64.*-name win11-vm" > /dev/null; do
+        sleep 5
         done
         echo "VM terdeteksi mati secara aman. Memulai proses Auto-Save ke Cloud..."
 
