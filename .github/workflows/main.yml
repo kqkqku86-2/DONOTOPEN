@@ -87,7 +87,7 @@ jobs:
         else
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
           echo "Unduh ISO Windows 11..."
-          wget "https://software.download.prss.microsoft.com/dbazure/Win11_25H2_English_x64_v2.iso?t=8860a928-86ac-4e3a-9517-df1595cbc93e&P1=1789375154&P2=602&P3=2&P4=c3Ofs2lZO9pnUr6hw6wpQIlg2OauaFtjJcBJ45In8UunTLerNhmJECP1m7sdtYLhcueij3NqCyWyBVloWq9Bqp%2f4L8Tt7%2fdmd3zlu9fYF81ljhG9X7F%2fhqlw%2fcPNLUkBi%2bHTV3H8zo5tEH7zaXxU7XgiNK6PpoIsNnqrDzuh9hkKSeWPPxixoTqNXN9%2b3jDnxjZlVMl%2bfKpTHxtEmbUI9yhiqHEaM1PRl7iH1IGKjloa2iztO37OI8TrPU%2bO0lzTeLhZqUS2yXskv1cLPwxxfPyG74klBNbdpygsoJnBBXcnZn5ASchcBM5iWQAYiMOe%2bmYssKZHSmey3hlVBnk0eg%3d%3d" -O installer.iso
+          wget "https://software.download.prss.microsoft.com/dbazure/Win11_25H2_English_x64_v2.iso?t=0149abfe-eaae-4ea1-a885-a7b4bd9647e3&P1=1789465710&P2=602&P3=2&P4=sC%2bn3SrrjlgIYcht5y2QZ0ah%2fXJ5u8XWP0hmXITQTSU3%2fHQ2Y9QaabBN0GI49%2bUTdIVkgCHSvK%2bd8E6P7nkL70MamzXqFSg5afke0f4pSE%2fHvChHAhE9WMyVt55lcaZUi3A%2bJN6TObHgldqq7%2fENn9dl%2bTOaCacOLggOahdtI6%2fB9x68eo%2fGMuBNf4bTClGbJ23AztPWUWHk7hBUvBTmbScEtEyujy%2bQsIlowqnOpzqlgc6wnhcS3sLBpd2lHaoJnMHsJ8Dzo9qXw6ZYFj5uMrn17VPuEE2paoX2eXS4T4NLgZgqCRT422PX69Ak8w78RLHm6iCp6KPm8fiDpyU%2bOg%3d%3d" -O installer.iso
           echo "BOOT_MODE=new" >> $GITHUB_ENV
         fi
 
