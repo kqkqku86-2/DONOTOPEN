@@ -96,46 +96,56 @@ jobs:
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
           cd /home/runner/work/kvm_storage
           qemu-img create -f qcow2 win11-vm.qcow2 64G
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/win11_vars.fd
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
           # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
           # Menambahkan --check all=off untuk mengabaikan error jaringan dan ukuran pool
           sudo qemu-system-x86_64 \
           -enable-kvm \
           -name win11-vm \
-          -machine q35 \
+          -machine q35,smm=on \
+          -global ICH9-LPC.disable_s3=1 \
+          -global driver=cfi.pflash01,property=secure,value=on \
           -m 4096 \
           -smp 2 \
           -cpu host \
           -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd \
+          -drive if=pflash,format=raw,file=/tmp/win11_vars.fd \
+          -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
+          -tpmdev emulator,id=tpm0,chardev=chrtpm \
+          -device tpm-tis,tpmdev=tpm0 \
+          -device nvme,drive=hd0,serial=nvme-disk0 \
+          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,id=hd0,if=none \
+          -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,media=cdrom,bus=0,unit=0 \
+          -boot menu=on,order=d \
+          -net nic,model=e1000e -net user \
+          -vga std \
+          -vnc 0.0.0.0:1 \
+          -daemonize
+        else
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/win11_vars.fd
+          echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
+          sudo qemu-system-x86_64 \
+          -enable-kvm \
+          -name win11-vm \
+          -machine q35,smm=on \
+          -global ICH9-LPC.disable_s3=1 \
+          -global driver=cfi.pflash01,property=secure,value=on \
+          -m 4096 \
+          -smp 2 \
+          -cpu host \
+          -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd \
+          -drive if=pflash,format=raw,file=/tmp/win11_vars.fd \
           -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
           -tpmdev emulator,id=tpm0,chardev=chrtpm \
           -device tpm-tis,tpmdev=tpm0 \
           -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
-          -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,media=cdrom \
-          -boot menu=on,order=dc \
+          -boot order=c \
           -net nic,model=virtio -net user \
+          -vga std \
           -vnc 0.0.0.0:1 \
           -daemonize
-        else
-          echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
-          sudo qemu-system-x86_64 \
-         -enable-kvm \
-         -name win11-vm \
-         -machine q35 \
-         -m 4096 \
-         -smp 2 \
-         -cpu host \
-         -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.secboot.fd \
-         -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
-         -tpmdev emulator,id=tpm0,chardev=chrtpm \
-         -device tpm-tis,tpmdev=tpm0 \
-         -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
-         -boot order=c \
-         -net nic,model=virtio -net user \
-         -vnc 0.0.0.0:1 \
-         -daemonize
-        fi
-
+         fi
     - name: Jembatani dengan Websockify & Buka Jalur Link Browser
       run: |
         cd /home/runner/work/DONOTOPEN/DONOTOPEN
