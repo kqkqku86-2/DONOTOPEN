@@ -114,6 +114,7 @@ jobs:
           -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
           -tpmdev emulator,id=tpm0,chardev=chrtpm \
           -device tpm-tis,tpmdev=tpm0 \
+          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,id=hd0,if=none \
           -device ahci,id=ahci0 \
           -device ide-cd,bus=ahci0.0,drive=cdrom0 \
           -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,id=cdrom0,if=none,media=cdrom \
