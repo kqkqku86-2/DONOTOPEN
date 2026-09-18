@@ -37,7 +37,6 @@ jobs:
         
         # Bersihkan cache sistem apt
         sudo apt-get clean
-        sudo rm -rf /tmp
         
         echo "=== UKURAN SETELAH DIBERSIHKAN ==="
         df -h
