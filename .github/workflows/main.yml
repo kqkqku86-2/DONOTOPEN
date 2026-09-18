@@ -141,7 +141,7 @@ jobs:
           -device ide-cd,bus=ahci0.0,drive=cdrom0 \
           -drive file=/tmp/installer.iso,id=cdrom0,if=none,media=cdrom \
           -boot menu=on,order=d \
-          -device usb-ehci,id=usb -device usb-tablet
+          -device usb-ehci,id=usb -device usb-tablet \
           -net nic,model=e1000e -net user \
           -vga qxl \
           -vnc 0.0.0.0:1 \
@@ -166,7 +166,7 @@ jobs:
           -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
           -boot order=c \
           -net nic,model=virtio -net user \
-          -device usb-ehci,id=usb -device usb-tablet
+          -device usb-ehci,id=usb -device usb-tablet \
           -vga qxl \
           -vnc 0.0.0.0:1 \
           -daemonize
