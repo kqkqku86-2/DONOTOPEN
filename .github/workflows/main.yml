@@ -88,7 +88,7 @@ jobs:
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
           echo "Unduh ISO Windows 11..."
           cd /tmp
-          wget "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso" -O installer.iso
+          wget "https://software.download.prss.microsoft.com/dbazure/Win10_22H2_English_x64v1.iso?t=2dbee9d1-5a4e-4095-92c7-3f1f65f5adf2&P1=1789799311&P2=602&P3=2&P4=GtxkrZEseADM98bOtFMd8EqFaVj2g%2fe6xHQ1y5D7U00QtbfNTJPiynLYBaDb5M4G3l8815C3SmJqQyi3PNpr2vffBs7d870XKB3RZGgT9X4Z1LnPUKnIJp6Mb3ZyZy5n2Cm8jRQk8bCMllBPKuggh3SkmV42GTEyI6djO7DNc%2f2kQE0ihcnyyWHtLG1RdAUCiff9QC8zjyUtF9RsoopwbOjZh85GvUF7zFAhiPGJ9EmXIm30Or6rz9H51sDztsM6ckKlp8Q329hpfZJnZ6UowM1j%2bfmhuDwhIGWc1Ro0cZbBcy%2fSPam6mbl2LCY5gRRpe0%2bxMRGKSeaVTk%2fVSTn2xQ%3d%3d" -O installer.iso
           cd /home/runner/work/DONOTOPEN/DONOTOPEN/
           echo "BOOT_MODE=new" >> $GITHUB_ENV
         fi
