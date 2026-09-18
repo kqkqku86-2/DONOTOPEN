@@ -23,6 +23,24 @@ jobs:
       run: |
         sudo chmod 666 /dev/kvm
         sudo chmod 666 /var/run/libvirt/libvirt-sock
+
+    - name: Bersihkan Penyimpanan Runner (Maximize Disk Space)
+      run: |
+        echo "=== UKURAN SEBELUM DIBERSIHKAN ==="
+        df -h
+        
+        # Hapus paket-paket besar bawaan GitHub Runner yang tidak dipakai
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        
+        # Bersihkan cache sistem apt
+        sudo apt-get clean
+        sudo rm -rf /tmp
+        
+        echo "=== UKURAN SETELAH DIBERSIHKAN ==="
+        df -h
         
         # Solusi Hak Akses ISO: Berikan izin akses penuh ke folder runner agar qemu bisa membaca file ISO
         sudo chmod 755 /home/runner
@@ -123,8 +141,9 @@ jobs:
           -device ide-cd,bus=ahci0.0,drive=cdrom0 \
           -drive file=/tmp/installer.iso,id=cdrom0,if=none,media=cdrom \
           -boot menu=on,order=d \
+          -device usb-ehci,id=usb -device usb-tablet
           -net nic,model=e1000e -net user \
-          -vga std \
+          -vga qxl \
           -vnc 0.0.0.0:1 \
           -daemonize
         else
@@ -147,7 +166,8 @@ jobs:
           -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,if=virtio \
           -boot order=c \
           -net nic,model=virtio -net user \
-          -vga std \
+          -device usb-ehci,id=usb -device usb-tablet
+          -vga qxl \
           -vnc 0.0.0.0:1 \
           -daemonize
          fi
