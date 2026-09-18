@@ -87,7 +87,9 @@ jobs:
         else
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
           echo "Unduh ISO Windows 11..."
-          wget "https://archive.org/download/tiny-11-NTDEV/tiny11%2023H2%20x64.iso" -O installer.iso
+          cd /tmp
+          wget "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso" -O installer.iso
+          cd /home/runner/work/DONOTOPEN/DONOTOPEN/
           echo "BOOT_MODE=new" >> $GITHUB_ENV
         fi
 
