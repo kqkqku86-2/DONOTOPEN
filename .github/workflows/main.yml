@@ -155,10 +155,27 @@ jobs:
       run: |
         cd /home/runner/work/DONOTOPEN/DONOTOPEN
         websockify --web /usr/share/novnc/ 6080 localhost:5901 &
+        # 1. Pastikan Node.js dan npm terinstal
+        sudo apt-get update && sudo apt-get install -y nodejs npm
+        
+        # 2. Instal localtunnel secara global
+        sudo npm install -g localtunnel
+        
+        # 3. Jalankan localtunnel di background dan buang hasilnya ke file log
+        nohup lt --port 6080 > tunnel.log 2>&1 &
+        
+        # 4. Beri jeda 5 detik agar localtunnel selesai membuat link
         sleep 5
-        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -R 80:localhost:6080 nokey@localhost.run > tunnel.log 2>&1 &
-        sleep 5
+        
+        # 5. Cetak (cat) link localtunnel tersebut ke layar log GitHub Actions
+        echo "=== LINK NOVNC ANDA DI BAWAH INI ==="
         cat tunnel.log
+        echo "====================================="
+        
+        # 6. Cetak juga IP publik runner untuk password localtunnel Anda nanti
+        echo "=== PASSWORD TUNNEL (IP RUNNER) ==="
+        curl ifconfig.me
+        echo -e "\n====================================="
         
         echo "========================================================================"
         echo "VM KAMU AKTIF! UNTUK MENYIMPAN PERUBAHAN SECARA OTOMATIS KE GITHUB:"
