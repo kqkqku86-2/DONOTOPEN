@@ -94,8 +94,9 @@ jobs:
     - name: Jalankan VM Menggunakan Virt-Install
       run: |
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
-          cd /home/runner/work/kvm_storage
+          cd /tmp
           qemu-img create -f qcow2 win11-vm.qcow2 64G
+          cd /home/runner/work/kvm_storage/
           cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/win11_vars.fd
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
           # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
@@ -114,7 +115,7 @@ jobs:
           -chardev socket,id=chrtpm,path=/tmp/emulated_tpm/swtpm-sock \
           -tpmdev emulator,id=tpm0,chardev=chrtpm \
           -device tpm-tis,tpmdev=tpm0 \
-          -drive file=/home/runner/work/kvm_storage/win11-vm.qcow2,format=qcow2,id=hd0,if=none \
+          -drive file=/tmp/win11-vm.qcow2,format=qcow2,id=hd0,if=none \
           -device nvme,drive=hd0,serial=nvme-disk0 \
           -device ahci,id=ahci0 \
           -device ide-cd,bus=ahci0.0,drive=cdrom0 \
@@ -171,12 +172,14 @@ jobs:
 
     - name: Auto-Save Perubahan Harddisk ke GitHub
       run: |
+        # kalau ada
+        qemu-img convert -O qcow2 -c /tmp/win11-vm.qcow2 /home/runner/work/kvm_storage/win11-vm.qcow2
         # Mengambil kembali file qcow2 dari folder kvm_storage luas ke folder repositori utama
         sudo mv /home/runner/work/kvm_storage/win11-vm.qcow2 ./win11-vm.qcow2
         sudo chmod 666 win11-vm.qcow2
 
         git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@://github.com"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         
         git lfs track "*.qcow2"
         git add .gitattributes
