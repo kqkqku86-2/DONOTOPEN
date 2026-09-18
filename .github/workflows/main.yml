@@ -121,7 +121,7 @@ jobs:
           -device nvme,drive=hd0,serial=nvme-disk0 \
           -device ahci,id=ahci0 \
           -device ide-cd,bus=ahci0.0,drive=cdrom0 \
-          -drive file=/home/runner/work/DONOTOPEN/DONOTOPEN/installer.iso,id=cdrom0,if=none,media=cdrom \
+          -drive file=/tmp/installer.iso,id=cdrom0,if=none,media=cdrom \
           -boot menu=on,order=d \
           -net nic,model=e1000e -net user \
           -vga std \
