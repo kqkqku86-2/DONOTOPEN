@@ -105,7 +105,7 @@ jobs:
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
           echo "Unduh ISO Windows 11..."
           cd /tmp
-          wget "https://archive.org/download/tiny-10-23-h2/tiny10%20x64%2023h2.iso" -O installer.iso
+          wget "https://downloads.sourceforge.net/project/tiny-11-releases/Tiny11-Pro-25H2/Tiny11-25H2-26200.8037-English-Pro-2026-08-23.iso?ts=gAAAAABqrkuCHuAxtCTNsPOiCteIlpi80gz7LU8KIEcEhA4LmNCZDQu54p48ONrGbnq8F0RlrGw3vHAPOY12mfkEuioHGvMz2A%3D%3D&r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Ftiny-11-releases%2Ffiles%2Flatest%2Fdownload" -O installer.iso
           cd /home/runner/work/DONOTOPEN/DONOTOPEN/
           echo "BOOT_MODE=new" >> $GITHUB_ENV
         fi
