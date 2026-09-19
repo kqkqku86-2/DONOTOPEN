@@ -93,13 +93,13 @@ jobs:
         
     - name: Cek Harddisk Lama (Auto-Load) atau Siapkan Installer Baru
       run: |
-        # Solusi Kapasitas: Kita buat folder penyimpanan disk di direktori workspace runner yang luas (Bukan di /var/lib/...)
         sudo mkdir -p /home/runner/work/kvm_storage
         sudo chmod 777 /home/runner/work/kvm_storage
-
-        if [ -f "win11-vm.qcow2" ]; then
-          echo "Harddisk dari sesi kemarin ditemukan! Memindahkannya ke storage luas..."
-          sudo mv win11-vm.qcow2 /home/runner/work/kvm_storage/win11-vm.qcow2
+        
+        # EDIT DI SINI: Deteksi file partisi, gabungkan jika ada
+        if [ -d "win11-vm-data" ] && ls win11-vm-data/win11-vm.qcow2.part_* 1> /dev/null 2>&1; then
+          echo "Partisi harddisk ditemukan! Menggabungkan berkas..."
+          cat win11-vm-data/win11-vm.qcow2.part_* > /home/runner/work/kvm_storage/win11-vm.qcow2
           echo "BOOT_MODE=saved" >> $GITHUB_ENV
         else
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
@@ -210,21 +210,29 @@ jobs:
 
     - name: Auto-Save Perubahan Harddisk ke GitHub
       run: |
-        # kalau ada
+        # Kompres berkas dari /tmp ke storage internal actions
         qemu-img convert -O qcow2 -c /tmp/win11-vm.qcow2 /home/runner/work/kvm_storage/win11-vm.qcow2
-        # Mengambil kembali file qcow2 dari folder kvm_storage luas ke folder repositori utama
-        sudo mv /home/runner/work/kvm_storage/win11-vm.qcow2 ./win11-vm.qcow2
-        sudo chmod 666 win11-vm.qcow2
-
+        
+        # EDIT DI SINI: Membuat folder khusus dan membersihkan pecahan lama
+        mkdir -p win11-vm-data
+        rm -f win11-vm-data/win11-vm.qcow2.part_*
+        
+        # EDIT DI SINI: Potong file 14GB menjadi pecahan 1.5GB langsung ke dalam folder khusus
+        split -b 1500M /home/runner/work/kvm_storage/win11-vm.qcow2 win11-vm-data/win11-vm.qcow2.part_
+        
+        # Konfigurasi Git LFS untuk folder khusus
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         
-        git lfs track "*.qcow2"
+        # EDIT DI SINI: Daftarkan LFS untuk melacak file partisi di folder tersebut
+        git lfs track "win11-vm-data/win11-vm.qcow2.part_*"
         git add .gitattributes
         
-        git add win11-vm.qcow2
-        git commit -m "Auto-Save: Memperbarui berkas sistem virt-install sesi terakhir"
+        # EDIT DI SINI: Push folder data partisi saja (Berkas utuh 14GB ditinggalkan/jangan di-add)
+        git add win11-vm-data/win11-vm.qcow2.part_*
+        git commit -m "Auto-Save: Memperbarui berkas sistem dalam bentuk partisi split di folder khusus"
         git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
         
