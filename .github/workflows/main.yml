@@ -96,10 +96,17 @@ jobs:
         sudo mkdir -p /home/runner/work/kvm_storage
         sudo chmod 777 /home/runner/work/kvm_storage
         
-        # EDIT DI SINI: Deteksi file partisi, gabungkan jika ada
-        if [ -d "win11-vm-data" ] && ls win11-vm-data/win11-vm.qcow2.part_* 1> /dev/null 2>&1; then
-          echo "Partisi harddisk ditemukan! Menggabungkan berkas..."
-          cat win11-vm-data/win11-vm.qcow2.part_* > /home/runner/work/kvm_storage/win11-vm.qcow2
+        # PERBAIKAN DI SINI: Deteksi file partisi, urutkan alfabetis, lalu gabungkan
+        if [ -d "win11-vm-data" ] && ls win11-vm-data/win11-vm.qcow2.part_?? 1> /dev/null 2>&1; then
+          echo "Partisi harddisk ditemukan! Menggabungkan berkas secara berurutan..."
+          
+          # Menggunakan sort untuk memastikan aa, ab, ac... digabungkan dengan benar
+          ls win11-vm-data/win11-vm.qcow2.part_?? | sort | xargs cat > /home/runner/work/kvm_storage/win11-vm.qcow2
+          
+          # Validasi apakah hasil penggabungan menghasilkan format qcow2 yang valid
+          echo "Memverifikasi integritas file hasil penggabungan:"
+          qemu-img info /home/runner/work/kvm_storage/win11-vm.qcow2
+          
           echo "BOOT_MODE=saved" >> $GITHUB_ENV
         else
           echo "Harddisk tidak ditemukan. Menyiapkan instalasi baru dari ISO..."
