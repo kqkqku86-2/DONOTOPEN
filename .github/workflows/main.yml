@@ -180,6 +180,7 @@ jobs:
           -net nic,model=e1000e -net user \
           -device usb-ehci,id=usb -device usb-tablet \
           -vga qxl \
+          -display none \
           -vnc 0.0.0.0:1 \
           -daemonize
          fi
