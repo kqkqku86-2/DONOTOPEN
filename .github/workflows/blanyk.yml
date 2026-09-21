@@ -70,14 +70,33 @@ jobs:
         run: |
           Write-Host "Mengonfigurasi autentikasi VNC..." -ForegroundColor Cyan
 
-          # Set password VNC menjadi '12345678' (Disimpan dalam bentuk Hex di Registry)
-          $registryPath = "HKLM:\SOFTWARE\TightVNC\Server"
-          if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
-          Set-ItemProperty -Path $registryPath -Name "Password" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
-          Set-ItemProperty -Path $registryPath -Name "ControlPassword" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
-
-          # Restart Service TightVNC agar membaca konfigurasi baru
-          Restart-Service -Name "tvnserver" -Force
+                # 1. Set password VNC menjadi '12345678' (Disimpan dalam Registry)
+                $registryPath = "HKLM:\SOFTWARE\TightVNC\Server"
+                if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
+                Set-ItemProperty -Path $registryPath -Name "Password" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
+                Set-ItemProperty -Path $registryPath -Name "ControlPassword" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
+                
+                # 2. Cari nama service VNC yang aktif di Windows secara dinamis
+                Write-Host "Mencari service VNC yang terinstal..." -ForegroundColor Cyan
+                $vncService = Get-Service | Where-Object { $_.Name -like "*tvn*" -or $_.DisplayName -like "*TightVNC*" }
+                
+                if ($vncService) {
+                    # Restart service jika ditemukan
+                    Write-Host "Menemukan service: $($vncService.Name). Memulai ulang layanan..." -ForegroundColor Green
+                    Restart-Service -Name $vncService.Name -Force
+                } else {
+                    # Jika instalasi winget tadi belum selesai mendaftarkan service, kita coba jalankan manual via aplikasinya
+                    Write-Host "Service belum terdaftar di Windows. Mencoba menjalankan VNC Server via aplikasi langsung..." -ForegroundColor Yellow
+                    
+                    $vncPath = "C:\Program Files\TightVNC\tvnserver.exe"
+                    if (Test-Path $vncPath) {
+                        # Jalankan TightVNC server langsung di latar belakang
+                        Start-Process -FilePath $vncPath -ArgumentList "-run" -WindowStyle Hidden
+                        Write-Host "TightVNC Server berhasil dijalankan langsung!" -ForegroundColor Green
+                    } else {
+                        Write-Host "Aplikasi TightVNC tidak ditemukan di folder standar. Pastikan Langkah 1 (winget) sukses tanpa interupsi." -ForegroundColor Red
+                    }
+                }
 
       - name: uiia
         run: |
