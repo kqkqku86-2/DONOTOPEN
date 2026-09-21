@@ -20,4 +20,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: Get-ComputerInfo -Property "HyperV*"
+        run: systeminfo
+
+      - name: idk
+        run: Get-WmiObject Win32_Processor | Select-Object Name, VirtualizationFirmwareEnabled
