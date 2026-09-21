@@ -48,32 +48,33 @@ jobs:
               websockify 8080 localhost:5900 --web C:\novnc 
           } | Out-Null
 
-          # 7. Jalankan Terowongan Publik via Pinggy (Tanpa Login, Tanpa Kartu)
+          # 7. Jalankan Terowongan Publik via Pinggy (Perbaikan Mode Non-Interaktif)
           Write-Host "Membuat terowongan publik via Pinggy..." -ForegroundColor Green
           
-          # Pinggy menggunakan SSH bawaan Windows untuk membuat reverse proxy port 8080
-          # Output disimpan ke file log sementara agar kita bisa mengambil URL-nya
+          # Tambahkan parameter -T (Disable pseudo-terminal) dan pass "y" secara otomatis ke dalam SSH
           Start-Job -Name "PinggyJob" -ScriptBlock {
-              ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 80:localhost:8080 a.pinggy.io
+              echo "y" | ssh -T -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 80:localhost:8080 a.pinggy.io
           } | Out-Null
 
-          # Jeda waktu agar koneksi SSH terjalin sempurna
-          Start-Sleep -Seconds 8
+          # Jeda waktu agar koneksi SSH terjalin sempurna ke server Pinggy
+          Start-Sleep -Seconds 10
 
           # 8. Ambil URL publik dari proses SSH Pinggy
           Write-Host "`n==================================================" -ForegroundColor Green
           Write-Host " BERHASIL! Akses layar Windows Server via Browser:" -ForegroundColor Green
-          Write-Host " Salin URL .pinggy.link dari log di atas / di bawah" -ForegroundColor Yellow
+          Write-Host " Cari URL .pinggy.link pada teks di bawah ini" -ForegroundColor Yellow
           Write-Host " Format akses: https://[URL-DARI-PINGGY]/vnc.html" -ForegroundColor Yellow
           Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
           Write-Host "==================================================" -ForegroundColor Green
 
-          # Menampilkan output SSH untuk melihat URL Pinggy yang aktif
-          Receive-Job -Name "PinggyJob"
+          # Mengambil output teks dari Job SSH Pinggy (Akan memunculkan teks URL aslinya)
+          $pinggyLog = Receive-Job -Name "PinggyJob"
+          Write-Output $pinggyLog
 
-          # Loop penahan aliran kerja utama agar runner tetap hidup
+          # Loop penahan aliran kerja utama agar runner tetap hidup (Ubah teks error ke normal agar tidak crash)
+          Write-Host "Terowongan aktif. Menjaga runner tetap hidup..." -ForegroundColor Green
           for ($i = 0; $i -lt 360; $i++) {
-              # Cetak ulang log berkala untuk memastikan terowongan tidak mati
-              Receive-Job -Name "PinggyJob" -ErrorAction SilentlyContinue
+              Receive-Job -Name "PinggyJob" -ErrorAction SilentlyContinue | Out-Null
               Start-Sleep -Seconds 60
           }
+
