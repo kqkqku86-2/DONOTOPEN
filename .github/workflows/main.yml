@@ -122,17 +122,30 @@ jobs:
           echo "BOOT_MODE=new" >> $GITHUB_ENV
         fi
 
-    - name: Jalankan VM Menggunakan Virt-Install
+    - name: Jalankan VM Menggunakan Virt-Install & Mulai Rekam Layar
       run: |
+        # 1. SIAPKAN DISPLAY VIRTUAL (Xvfb)
+        # Kita buat layar virtual dengan resolusi monitor Anda (1366x768)
+        sudo apt-get install -y xvfb
+        Xvfb :99 -screen 0 1366x768x24 &
+        export DISPLAY=:99
+        sleep 3 # Beri waktu layar virtual menyala
+
+        # 2. JALANKAN REKAMAN FFMPEG DI BACKGROUND
+        # Rekam layar penuh (:99.0) dengan resolusi monitor Anda
+        ffmpeg -framerate 30 -f x11grab -video_size 1366x768 -i :99.0+0,0 \
+          -c:v libx264 -crf 23 -pix_fmt yuv420p /tmp/live_rekaman_vm.mp4 &
+        echo "FFMPEG_RECORD_PID=$!" >> $GITHUB_ENV # Simpan PID FFmpeg ke Environment Global
+
+        # 3. JALANKAN QEMU (Tambahkan export DISPLAY agar QEMU melempar grafisnya ke Xvfb)
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
           cd /tmp
           qemu-img create -f qcow2 win11-vm.qcow2 64G
           cd /home/runner/work/kvm_storage/
           cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/win11_vars.fd
           echo "Memulai VM baru dari CD-ROM (RAM 4096)..."
-          # Menambahkan sparse=true agar file qcow2 dibuat secara dinamis (ringan)
-          # Menambahkan --check all=off untuk mengabaikan error jaringan dan ukuran pool
-          sudo qemu-system-x86_64 \
+          
+          sudo DISPLAY=:99 qemu-system-x86_64 \
           -enable-kvm \
           -name win11-vm \
           -machine q35,smm=on \
@@ -160,7 +173,8 @@ jobs:
         else
           cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/win11_vars.fd
           echo "Memulai VM melanjutkan sesi kemarin (RAM 4096)..."
-          sudo qemu-system-x86_64 \
+          
+          sudo DISPLAY=:99 qemu-system-x86_64 \
           -enable-kvm \
           -name win11-vm \
           -machine q35,smm=on \
@@ -180,7 +194,6 @@ jobs:
           -net nic,model=e1000e -net user \
           -device usb-ehci,id=usb -device usb-tablet \
           -vga qxl \
-          -display none \
           -vnc 0.0.0.0:1 \
           -daemonize
          fi
@@ -215,13 +228,25 @@ jobs:
         echo "SHUTDOWN ATAU MATIKAN OS DI DALAM LAYAR noVNC KAMU."
         echo "========================================================================"
 
-    - name: Menunggu VM Dimatikan (Auto-Save Trigger)
+    - name: Menunggu VM Dimatikan (Auto-Save Trigger) & Stop Rekaman
       run: |
         while pgrep -f "qemu-system-x86_64.*-name win11-vm" > /dev/null; do
-        sleep 5
+          sleep 5
         done
-        echo "VM terdeteksi mati secara aman. Memulai proses Auto-Save ke Cloud..."
+        echo "VM terdeteksi mati secara aman."
+        
+        # STOP REKAMAN FFMPEG DENGAN AMAN (Autosave Video)
+        echo "Menghentikan perekaman video layar..."
+        sudo kill -SIGINT ${{ env.FFMPEG_RECORD_PID }} || true
+        sleep 5 # Beri waktu video melakukan finalisasi container mp4
+        echo "Memulai proses Auto-Save ke Cloud..."
 
+    - name: Upload Bukti Video Rekaman Layar VM
+      uses: actions/upload-artifact@v4
+      with:
+        name: bukti-rekaman-layar-windows
+        path: /tmp/live_rekaman_vm.mp4
+        
     - name: Auto-Save Perubahan Harddisk ke GitHub
       run: |
         # Kompres berkas dari /tmp ke storage internal actions
