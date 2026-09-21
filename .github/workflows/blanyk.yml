@@ -48,33 +48,36 @@ jobs:
               websockify 8080 localhost:5900 --web C:\novnc 
           } | Out-Null
 
-          # 7. Jalankan Terowongan Publik via Pinggy (Perbaikan Mode Non-Interaktif)
-          Write-Host "Membuat terowongan publik via Pinggy..." -ForegroundColor Green
+          # 7. Jalankan Terowongan Publik via Tunnelmole (Bypass Blokir Port 22)
+          Write-Host "Menginstal dan menjalankan Tunnelmole..." -ForegroundColor Green
           
-          # Tambahkan parameter -T (Disable pseudo-terminal) dan pass "y" secara otomatis ke dalam SSH
-          Start-Job -Name "PinggyJob" -ScriptBlock {
-              echo "y" | ssh -T -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 80:localhost:8080 a.pinggy.io
+          # Instal tunnelmole secara global via NPM
+          npm install -g tunnelmole
+          
+          # Jalankan tunnelmole ke port 8080 di latar belakang
+          Start-Job -Name "TunnelmoleJob" -ScriptBlock {
+              tmole 8080
           } | Out-Null
 
-          # Jeda waktu agar koneksi SSH terjalin sempurna ke server Pinggy
-          Start-Sleep -Seconds 10
+          # Jeda waktu agar tunnelmole selesai menegosiasikan URL publik
+          Start-Sleep -Seconds 12
 
-          # 8. Ambil URL publik dari proses SSH Pinggy
+          # 8. Ambil URL publik dari proses Tunnelmole
           Write-Host "`n==================================================" -ForegroundColor Green
           Write-Host " BERHASIL! Akses layar Windows Server via Browser:" -ForegroundColor Green
-          Write-Host " Cari URL .pinggy.link pada teks di bawah ini" -ForegroundColor Yellow
-          Write-Host " Format akses: https://[URL-DARI-PINGGY]/vnc.html" -ForegroundColor Yellow
+          Write-Host " Cari URL .tunnelmole.net / .tmole.site di bawah" -ForegroundColor Yellow
+          Write-Host " Format akses: https://[URL-DARI-LOG]/vnc.html" -ForegroundColor Yellow
           Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
           Write-Host "==================================================" -ForegroundColor Green
 
-          # Mengambil output teks dari Job SSH Pinggy (Akan memunculkan teks URL aslinya)
-          $pinggyLog = Receive-Job -Name "PinggyJob"
-          Write-Output $pinggyLog
+          # Menampilkan log untuk menyalin URL publik yang dihasilkan
+          $tmoleLog = Receive-Job -Name "TunnelmoleJob"
+          Write-Output $tmoleLog
 
-          # Loop penahan aliran kerja utama agar runner tetap hidup (Ubah teks error ke normal agar tidak crash)
+          # Loop penahan aliran kerja utama agar runner tetap hidup (Batas maksimal 6 Jam)
           Write-Host "Terowongan aktif. Menjaga runner tetap hidup..." -ForegroundColor Green
           for ($i = 0; $i -lt 360; $i++) {
-              Receive-Job -Name "PinggyJob" -ErrorAction SilentlyContinue | Out-Null
+              # Ambil log berkala secara aman agar tidak crash
+              Receive-Job -Name "TunnelmoleJob" -ErrorAction SilentlyContinue | Out-Null
               Start-Sleep -Seconds 60
           }
-
