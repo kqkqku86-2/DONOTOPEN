@@ -21,11 +21,18 @@ jobs:
       # Runs a single command using the runners shell
       - name: Run a one-line script
         run: |
-          Write-Host "Mengunduh dan menginstal TightVNC Server langsung..." -ForegroundColor Cyan
-            # 1. Download TightVNC installer (.msi) resmi versi 64-bit
+            Write-Host "Mengunduh dan menginstal TightVNC Server langsung..." -ForegroundColor Cyan
+            
+            # 1. Tentukan URL unduhan resmi TightVNC
             $vncUrl = "https://www.tightvnc.com/download/2.8.88/tightvnc-2.8.88-gpl-setup-64bit.msi"
-            $vncMsi = "env:TEMP\tightvnc.msi"
-            Invoke-WebRequest -Uri vncUrl -OutFile vncMsi
+            
+            # 2. Tentukan lokasi simpan di folder Temp Windows (Gunakan $env:TEMP)
+            $vncMsi = "$env:TEMP\tightvnc.msi"
+            
+            # 3. Eksekusi unduhan berkas msi
+            Invoke-WebRequest -Uri $vncUrl -OutFile $vncMsi
+
+
             
             # 2. Install TightVNC secara senyap (Silent Install) sebagai Service
             Start-Process msiexec.exe -ArgumentList "/i `"$vncMsi`" /quiet /qn /norestart SET_SERVERPASSWORD=1 VALUE_SERVERPASSWORD=12345678 SET_CONTROLPASSWORD=1 VALUE_CONTROLPASSWORD=12345678" -Wait
