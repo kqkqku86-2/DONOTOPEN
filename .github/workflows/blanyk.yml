@@ -134,6 +134,8 @@ jobs:
               Write-Host "Gagal mendapatkan URL secara otomatis. Coba cek output manual dengan perintah: Receive-Job -Name LocalTunnelJob" -ForegroundColor Red
           }
 
+          while ($true) { Write-Output "Teks Anda di sini"; Start-Sleep -Seconds 60 }
+
 
          
        
