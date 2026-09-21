@@ -34,7 +34,7 @@ jobs:
           # 5. Download dan Ekstrak noVNC dari GitHub
           Write-Host "Menyiapkan komponen web noVNC..." -ForegroundColor Cyan
           New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
-          $url = "https://github.com"
+          $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
           $zipPath = "C:\novnc\novnc.zip"
           Invoke-WebRequest -Uri $url -OutFile $zipPath
           Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
