@@ -1,142 +1,79 @@
-    # This is a basic workflow to help you get started with Actions
-
 name: CI virt
 
-# Controls when the workflow will run
 on:
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: windows-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
+      - name: Eksekusi GUI Desktop, VNC, noVNC & Pinggy Tunnel
+        shell: powershell
         run: |
-           Write-Host "Menginstal TightVNC Server via Chocolatey..." -ForegroundColor Cyan
+          # 1. Bypass mode headless Windows Server agar mengizinkan render grafis GUI
+          Write-Host "Mengonfigurasi sesi desktop virtual..." -ForegroundColor Cyan
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # 2. Instal TightVNC Server via Chocolatey
+          Write-Host "Menginstal TightVNC Server..." -ForegroundColor Cyan
+          choco install tightvnc --yes --installargs "SET_SERVERPASSWORD=1 VALUE_SERVERPASSWORD=12345678 SET_CONTROLPASSWORD=1 VALUE_CONTROLPASSWORD=12345678"
+          
+          # 3. Paksa TightVNC berjalan sebagai sesi user agar bisa menangkap layar aktif
+          Stop-Service -Name "tvnserver" -ErrorAction SilentlyContinue
+          $vncPath = "C:\Program Files\TightVNC\tvnserver.exe"
+          Start-Process -FilePath $vncPath -ArgumentList "-run" -WindowStyle Hidden
 
-            # Install TightVNC secara senyap tanpa perlu download file msi manual
-            choco install tightvnc --yes --installargs "SET_SERVERPASSWORD=1 VALUE_SERVERPASSWORD=12345678 SET_CONTROLPASSWORD=1 VALUE_CONTROLPASSWORD=12345678"
+          # 4. Instal Node.js & Websockify via Winget & NPM
+          Write-Host "Menginstal Node.js dan komponen Websockify..." -ForegroundColor Cyan
+          winget install --id=OpenJS.NodeJS --silent --accept-package-agreements
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          npm install -g @teampanfu/websockify
 
+          # 5. Download dan Ekstrak noVNC dari GitHub
+          Write-Host "Menyiapkan komponen web noVNC..." -ForegroundColor Cyan
+          New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
+          $url = "https://github.com"
+          $zipPath = "C:\novnc\novnc.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
+          
+          $extractedFolder = Get-ChildItem -Path "C:\novnc\extracted" -Directory | Select-Object -First 1
+          Move-Item -Path "$($extractedFolder.FullName)\*" -Destination "C:\novnc" -Force
+          Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
 
-
-            
-           Write-Host "Mengunduh dan menginstal Node.js..." -ForegroundColor Cyan
-            winget install --id=OpenJS.NodeJS --silent --accept-package-agreements
-            
-            # 3. Reload Environment Variable agar perintah 'npm' langsung aktif tanpa restart PowerShell
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            
-            # 4. Install Websockify dan Localtunnel via NPM secara global
-            Write-Host "Menginstal Websockify dan LocalTunnel melalui NPM..." -ForegroundColor Cyan
-            npm install -g @teampanfu/websockify localtunnel
-
-
-      - name: idk
-        run: |
-          Write-Host "Mengunduh dan mengekstrak komponen noVNC..." -ForegroundColor Cyan
-
-            # 1. Buat direktori kerja baru
-            New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
-            
-            # 2. Unduh zip noVNC langsung dari source utama
-            $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
-            $zipPath = "C:\novnc\novnc.zip"
-            Invoke-WebRequest -Uri $url -OutFile $zipPath
-            
-            # 3. Ekstrak file zip
-            Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
-            
-            # 4. Cari nama folder hasil ekstrak secara dinamis (mengatasi error "does not exist")
-            $extractedFolder = Get-ChildItem -Path "C:\novnc\extracted" -Directory | Select-Object -First 1
-            
-            # 5. Pindahkan isi file ke folder utama C:\novnc
-            if ($extractedFolder) {
-                Move-Item -Path "$($extractedFolder.FullName)\*" -Destination "C:\novnc" -Force
-                Write-Host "Berhasil memindahkan komponen noVNC!" -ForegroundColor Green
-            } else {
-                Write-Host "Gagal menemukan folder hasil ekstraksi." -ForegroundColor Red
-            }
-
-            # 6. Bersihkan file sampah ekstrasi
-            Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
-
-      - name: uia
-        run: |
-          Write-Host "Mengonfigurasi autentikasi VNC..." -ForegroundColor Cyan
-
-                # 1. Set password VNC menjadi '12345678' (Disimpan dalam Registry)
-                $registryPath = "HKLM:\SOFTWARE\TightVNC\Server"
-                if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
-                Set-ItemProperty -Path $registryPath -Name "Password" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
-                Set-ItemProperty -Path $registryPath -Name "ControlPassword" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
-                
-                # 2. Cari nama service VNC yang aktif di Windows secara dinamis
-                Write-Host "Mencari service VNC yang terinstal..." -ForegroundColor Cyan
-                $vncService = Get-Service | Where-Object { $_.Name -like "*tvn*" -or $_.DisplayName -like "*TightVNC*" }
-                
-                if ($vncService) {
-                    # Restart service jika ditemukan
-                    Write-Host "Menemukan service: $($vncService.Name). Memulai ulang layanan..." -ForegroundColor Green
-                    Restart-Service -Name $vncService.Name -Force
-                } else {
-                    # Jika instalasi winget tadi belum selesai mendaftarkan service, kita coba jalankan manual via aplikasinya
-                    Write-Host "Service belum terdaftar di Windows. Mencoba menjalankan VNC Server via aplikasi langsung..." -ForegroundColor Yellow
-                    
-                    $vncPath = "C:\Program Files\TightVNC\tvnserver.exe"
-                    if (Test-Path $vncPath) {
-                        # Jalankan TightVNC server langsung di latar belakang
-                        Start-Process -FilePath $vncPath -ArgumentList "-run" -WindowStyle Hidden
-                        Write-Host "TightVNC Server berhasil dijalankan langsung!" -ForegroundColor Green
-                    } else {
-                        Write-Host "Aplikasi TightVNC tidak ditemukan di folder standar. Pastikan Langkah 1 (winget) sukses tanpa interupsi." -ForegroundColor Red
-                    }
-                }
-
-      - name: uiia
-        run: |
-          Write-Host "Menjalankan Websockify dan LocalTunnel di latar belakang..." -ForegroundColor Green
-
-          # 1. Jalankan Websockify di background
+          # 6. Jalankan Websockify di Latar Belakang (Port VNC 5900 -> Web Socket Port 8080)
           Start-Job -Name "WebsockifyJob" -ScriptBlock { 
               websockify 8080 localhost:5900 --web C:\novnc 
           } | Out-Null
+
+          # 7. Jalankan Terowongan Publik via Pinggy (Tanpa Login, Tanpa Kartu)
+          Write-Host "Membuat terowongan publik via Pinggy..." -ForegroundColor Green
           
-          # 2. Jalankan LocalTunnel di background
-          Start-Job -Name "LocalTunnelJob" -ScriptBlock { 
-              lt --port 8080 
+          # Pinggy menggunakan SSH bawaan Windows untuk membuat reverse proxy port 8080
+          # Output disimpan ke file log sementara agar kita bisa mengambil URL-nya
+          Start-Job -Name "PinggyJob" -ScriptBlock {
+              ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 80:localhost:8080 a.pinggy.io
           } | Out-Null
-          
-          # 3. Tunggu 5 detik agar LocalTunnel berhasil membuat koneksi ke server
-          Write-Host "Sedang membuat URL publik, mohon tunggu..." -ForegroundColor Cyan
-          Start-Sleep -Seconds 5
-          
-          # 4. Ambil output URL dari LocalTunnel dan tampilkan di layar utama
-          $tunnelOutput = Receive-Job -Name "LocalTunnelJob"
-          $url = ($tunnelOutput | Select-String -Pattern "your url is: (https://.*)").Matches.Groups[1].Value
-          
-          if ($url) {
-              Write-Host "`n==================================================" -ForegroundColor Green
-              Write-Host " BERHASIL! Akses layar Windows Anda via browser:" -ForegroundColor Green
-              Write-Host " URL: $url/vnc.html" -ForegroundColor Yellow
-              Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
-              Write-Host "==================================================" -ForegroundColor Green
-              Write-Host "Jangan tutup jendela PowerShell ini agar koneksi tidak terputus." -ForegroundColor White
-          } else {
-              Write-Host "Gagal mendapatkan URL secara otomatis. Coba cek output manual dengan perintah: Receive-Job -Name LocalTunnelJob" -ForegroundColor Red
+
+          # Jeda waktu agar koneksi SSH terjalin sempurna
+          Start-Sleep -Seconds 8
+
+          # 8. Ambil URL publik dari proses SSH Pinggy
+          Write-Host "`n==================================================" -ForegroundColor Green
+          Write-Host " BERHASIL! Akses layar Windows Server via Browser:" -ForegroundColor Green
+          Write-Host " Salin URL .pinggy.link dari log di atas / di bawah" -ForegroundColor Yellow
+          Write-Host " Format akses: https://[URL-DARI-PINGGY]/vnc.html" -ForegroundColor Yellow
+          Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
+          Write-Host "==================================================" -ForegroundColor Green
+
+          # Menampilkan output SSH untuk melihat URL Pinggy yang aktif
+          Receive-Job -Name "PinggyJob"
+
+          # Loop penahan aliran kerja utama agar runner tetap hidup
+          for ($i = 0; $i -lt 360; $i++) {
+              # Cetak ulang log berkala untuk memastikan terowongan tidak mati
+              Receive-Job -Name "PinggyJob" -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 60
           }
-
-          while ($true) { Write-Output "Teks Anda di sini"; Start-Sleep -Seconds 60 }
-
-
-         
-       
-
