@@ -40,18 +40,31 @@ jobs:
       - name: idk
         run: |
           Write-Host "Mengunduh dan mengekstrak komponen noVNC..." -ForegroundColor Cyan
-          # Buat direktori kerja
-          New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
 
-          # Unduh zip source code noVNC versi stabil terbaru
-          $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
-          $zipPath = "C:\novnc\novnc.zip"
-          Invoke-WebRequest -Uri $url -OutFile $zipPath
+            # 1. Buat direktori kerja baru
+            New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
+            
+            # 2. Unduh zip noVNC langsung dari source utama
+            $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
+            $zipPath = "C:\novnc\novnc.zip"
+            Invoke-WebRequest -Uri $url -OutFile $zipPath
+            
+            # 3. Ekstrak file zip
+            Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
+            
+            # 4. Cari nama folder hasil ekstrak secara dinamis (mengatasi error "does not exist")
+            $extractedFolder = Get-ChildItem -Path "C:\novnc\extracted" -Directory | Select-Object -First 1
+            
+            # 5. Pindahkan isi file ke folder utama C:\novnc
+            if ($extractedFolder) {
+                Move-Item -Path "$($extractedFolder.FullName)\*" -Destination "C:\novnc" -Force
+                Write-Host "Berhasil memindahkan komponen noVNC!" -ForegroundColor Green
+            } else {
+                Write-Host "Gagal menemukan folder hasil ekstraksi." -ForegroundColor Red
+            }
 
-          # Ekstrak file zip dan rapikan foldernya
-          Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
-          Move-Item -Path "C:\novnc\extracted\noVNC-1.5.0\*" -Destination "C:\novnc" -Force
-          Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
+            # 6. Bersihkan file sampah ekstrasi
+            Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
 
       - name: uia
         run: |
