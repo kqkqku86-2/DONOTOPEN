@@ -21,20 +21,30 @@ jobs:
       # Runs a single command using the runners shell
       - name: Run a one-line script
         run: |
-          # 1. Install TightVNC Server secara senyap (Silent Install)
-          Write-Host "Mengunduh dan menginstal TightVNC Server..." -ForegroundColor Cyan
-          winget install --id=TightVNC.TightVNC --silent --accept-package-agreements --accept-source-agreements
-
-          # 2. Install Node.js (untuk NPM)
-          Write-Host "Mengunduh dan menginstal Node.js..." -ForegroundColor Cyan
-          winget install --id=OpenJS.NodeJS --silent --accept-package-agreements
-
-          # 3. Reload Environment Variable agar perintah 'npm' langsung aktif tanpa restart PowerShell
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-          # 4. Install Websockify dan Localtunnel via NPM secara global
-          Write-Host "Menginstal Websockify dan LocalTunnel melalui NPM..." -ForegroundColor Cyan
-          npm install -g @teampanfu/websockify localtunnel
+          Write-Host "Mengunduh dan menginstal TightVNC Server langsung..." -ForegroundColor Cyan
+            # 1. Download TightVNC installer (.msi) resmi versi 64-bit
+            \$vncUrl = "https://www.tightvnc.com/download/2.8.88/tightvnc-2.8.88-gpl-setup-64bit.msi"
+            vncMsi = "env:TEMP\tightvnc.msi"
+            Invoke-WebRequest -Uri vncUrl -OutFile vncMsi
+            
+            # 2. Install TightVNC secara senyap (Silent Install) sebagai Service
+            Start-Process msiexec.exe -ArgumentList "/i `"$vncMsi`" /quiet /qn /norestart SET_SERVERPASSWORD=1 VALUE_SERVERPASSWORD=12345678 SET_CONTROLPASSWORD=1 VALUE_CONTROLPASSWORD=12345678" -Wait
+            
+            Write-Host "Mengunduh dan menginstal Node.js langsung..." -ForegroundColor Cyan
+            # 3. Download Node.js installer (.msi) resmi versi stabil (LTS)
+            \$nodeUrl = "https://nodejs.org"
+            nodeMsi = "env:TEMP\nodejs.msi"
+            Invoke-WebRequest -Uri nodeUrl -OutFile nodeMsi
+            
+            # 4. Install Node.js secara senyap
+            Start-Process msiexec.exe -ArgumentList "/i `"$nodeMsi`" /quiet /qn /norestart" -Wait
+            
+            # 5. Refresh Environment Variables
+            \$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            
+            Write-Host "Menginstal Websockify dan LocalTunnel via NPM..." -ForegroundColor Cyan
+            # 6. Install package pendukung
+            npm install -g @teampanfu/websockify localtunnel
 
 
       - name: idk
