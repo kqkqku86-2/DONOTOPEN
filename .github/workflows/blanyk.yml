@@ -8,20 +8,26 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Eksekusi GUI Desktop, VNC, noVNC & Pinggy Tunnel
+      - name: Eksekusi GUI Desktop, VNC, noVNC & Tunnelmole
         shell: powershell
         run: |
-          # 1. Bypass mode headless Windows Server agar mengizinkan render grafis GUI
-          Write-Host "Mengonfigurasi sesi desktop virtual..." -ForegroundColor Cyan
+          # 1. Pasang Driver Layar Virtual (Sangat Penting untuk Runner Headless)
+          Write-Host "Mengonfigurasi kartu grafis virtual dan sesi desktop..." -ForegroundColor Cyan
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           
+          # Konfigurasi agar Windows mengizinkan simulasi layar aktif
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name "AutoAdminLogon" -Value "1"
+
           # 2. Instal TightVNC Server via Chocolatey
           Write-Host "Menginstal TightVNC Server..." -ForegroundColor Cyan
           choco install tightvnc --yes --installargs "SET_SERVERPASSWORD=1 VALUE_SERVERPASSWORD=12345678 SET_CONTROLPASSWORD=1 VALUE_CONTROLPASSWORD=12345678"
           
-          # 3. Paksa TightVNC berjalan sebagai sesi user agar bisa menangkap layar aktif
+          # 3. Paksa VNC berjalan langsung di sesi User grafis, bukan Service terisolasi
           Stop-Service -Name "tvnserver" -ErrorAction SilentlyContinue
+          Set-Service -Name "tvnserver" -StartupType Disabled -ErrorAction SilentlyContinue
+          
+          # Panggil aplikasi server secara manual agar merender layar aktif saat ini
           $vncPath = "C:\Program Files\TightVNC\tvnserver.exe"
           Start-Process -FilePath $vncPath -ArgumentList "-run" -WindowStyle Hidden
 
@@ -29,44 +35,31 @@ jobs:
           Write-Host "Menginstal Node.js dan komponen Websockify..." -ForegroundColor Cyan
           winget install --id=OpenJS.NodeJS --silent --accept-package-agreements
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          npm install -g @teampanfu/websockify
+          npm install -g @teampanfu/websockify tunnelmole
 
-          # 5. Download dan Ekstrak noVNC dari GitHub
+          # 5. Download noVNC Web Client langsung via Git Clone (Lebih Stabil dari Zip)
           Write-Host "Menyiapkan komponen web noVNC..." -ForegroundColor Cyan
-          New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
-          $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
-          $zipPath = "C:\novnc\novnc.zip"
-          Invoke-WebRequest -Uri $url -OutFile $zipPath
-          Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
-          
-          $extractedFolder = Get-ChildItem -Path "C:\novnc\extracted" -Directory | Select-Object -First 1
-          Move-Item -Path "$($extractedFolder.FullName)\*" -Destination "C:\novnc" -Force
-          Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
+          Remove-Item -Recurse -Force "C:\novnc" -ErrorAction SilentlyContinue
+          git clone https://github.com/novnc/novnc.git C:\novnc
 
           # 6. Jalankan Websockify di Latar Belakang (Port VNC 5900 -> Web Socket Port 8080)
           Start-Job -Name "WebsockifyJob" -ScriptBlock { 
               websockify 8080 localhost:5900 --web C:\novnc 
           } | Out-Null
 
-          # 7. Jalankan Terowongan Publik via Tunnelmole (Bypass Blokir Port 22)
-          Write-Host "Menginstal dan menjalankan Tunnelmole..." -ForegroundColor Green
-          
-          # Instal tunnelmole secara global via NPM
-          npm install -g tunnelmole
-          
-          # Jalankan tunnelmole ke port 8080 di latar belakang
+          # 7. Jalankan Terowongan Publik via Tunnelmole
+          Write-Host "Menghubungkan ke terowongan publik Tunnelmole..." -ForegroundColor Green
           Start-Job -Name "TunnelmoleJob" -ScriptBlock {
               tmole 8080
           } | Out-Null
 
           # Jeda waktu agar tunnelmole selesai menegosiasikan URL publik
-          Start-Sleep -Seconds 12
+          Start-Sleep -Seconds 15
 
           # 8. Ambil URL publik dari proses Tunnelmole
           Write-Host "`n==================================================" -ForegroundColor Green
           Write-Host " BERHASIL! Akses layar Windows Server via Browser:" -ForegroundColor Green
-          Write-Host " Cari URL .tunnelmole.net / .tmole.site di bawah" -ForegroundColor Yellow
-          Write-Host " Format akses: https://[URL-DARI-LOG]/vnc.html" -ForegroundColor Yellow
+          Write-Host " Format akses: https://[URL-DARI-LOG-DI-BAWAH]/vnc.html" -ForegroundColor Yellow
           Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
           Write-Host "==================================================" -ForegroundColor Green
 
@@ -74,10 +67,9 @@ jobs:
           $tmoleLog = Receive-Job -Name "TunnelmoleJob"
           Write-Output $tmoleLog
 
-          # Loop penahan aliran kerja utama agar runner tetap hidup (Batas maksimal 6 Jam)
+          # Loop penahan aliran kerja utama agar proses background tidak mati
           Write-Host "Terowongan aktif. Menjaga runner tetap hidup..." -ForegroundColor Green
           for ($i = 0; $i -lt 360; $i++) {
-              # Ambil log berkala secara aman agar tidak crash
               Receive-Job -Name "TunnelmoleJob" -ErrorAction SilentlyContinue | Out-Null
               Start-Sleep -Seconds 60
           }
