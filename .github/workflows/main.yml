@@ -124,20 +124,24 @@ jobs:
 
     - name: Jalankan VM Menggunakan Virt-Install & Mulai Rekam Layar
       run: |
-        # 1. SIAPKAN DISPLAY VIRTUAL (Xvfb)
-        # Kita buat layar virtual dengan resolusi monitor Anda (1366x768)
-        sudo apt-get install -y xvfb
+        # 1. PASTIKAN FFMPEG DAN XVFB TERINSTAL
+        sudo apt-get update
+        sudo apt-get install -y xvfb ffmpeg
+
+        # 2. SIAPKAN DISPLAY VIRTUAL (Xvfb)
         Xvfb :99 -screen 0 1366x768x24 &
         export DISPLAY=:99
         sleep 3 # Beri waktu layar virtual menyala
 
-        # 2. JALANKAN REKAMAN FFMPEG DI BACKGROUND
-        # Rekam layar penuh (:99.0) dengan resolusi monitor Anda
-        ffmpeg -framerate 30 -f x11grab -video_size 1366x768 -i :99.0+0,0 \
+        # 3. JALANKAN REKAMAN FFMPEG DI BACKGROUND
+        # Gunakan sudo agar ffmpeg memiliki hak akses yang sama jika QEMU berjalan sebagai root
+        sudo ffmpeg -framerate 30 -f x11grab -video_size 1366x768 -i :99.0+0,0 \
           -c:v libx264 -crf 23 -pix_fmt yuv420p /tmp/live_rekaman_vm.mp4 &
-        echo "FFMPEG_RECORD_PID=$!" >> $GITHUB_ENV # Simpan PID FFmpeg ke Environment Global
+        FFMPEG_PID=$!
+        echo "FFMPEG_RECORD_PID=$FFMPEG_PID" >> $GITHUB_ENV
+        echo "FFmpeg berhasil berjalan di latar belakang dengan PID: $FFMPEG_PID"
 
-        # 3. JALANKAN QEMU (Tambahkan export DISPLAY agar QEMU melempar grafisnya ke Xvfb)
+        # 4. JALANKAN QEMU
         if [ "${{ env.BOOT_MODE }}" = "new" ]; then
           cd /tmp
           qemu-img create -f qcow2 win11-vm.qcow2 64G
@@ -197,6 +201,7 @@ jobs:
           -vnc 0.0.0.0:1 \
           -daemonize
          fi
+         
     - name: Jembatani dengan Websockify & Buka Jalur Link Browser
       run: |
         cd /home/runner/work/DONOTOPEN/DONOTOPEN
@@ -235,10 +240,12 @@ jobs:
         done
         echo "VM terdeteksi mati secara aman."
         
-        # STOP REKAMAN FFMPEG DENGAN AMAN (Autosave Video)
-        echo "Menghentikan perekaman video layar..."
+        # STOP REKAMAN FFMPEG DENGAN SUDO KARENA PADA LANGKAH SEBELUMNYA MENGGUNAKAN SUDO
+        echo "Menghentikan perekaman video layar PID: ${{ env.FFMPEG_RECORD_PID }}"
         sudo kill -SIGINT ${{ env.FFMPEG_RECORD_PID }} || true
-        sleep 5 # Beri waktu video melakukan finalisasi container mp4
+        
+        # Beri waktu 8 detik agar container MP4 menutup dengan sempurna (mencegah korup)
+        sleep 8 
         echo "Memulai proses Auto-Save ke Cloud..."
 
     - name: Upload Bukti Video Rekaman Layar VM
