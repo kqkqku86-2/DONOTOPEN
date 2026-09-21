@@ -1,4 +1,4 @@
-# This is a basic workflow to help you get started with Actions
+    # This is a basic workflow to help you get started with Actions
 
 name: CI virt
 
@@ -20,7 +20,86 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: systeminfo
+        run: |
+          # 1. Install TightVNC Server secara senyap (Silent Install)
+          Write-Host "Mengunduh dan menginstal TightVNC Server..." -ForegroundColor Cyan
+          winget install --id=TightVNC.TightVNC --silent --accept-package-agreements --accept-source-agreements
+
+          # 2. Install Node.js (untuk NPM)
+          Write-Host "Mengunduh dan menginstal Node.js..." -ForegroundColor Cyan
+          winget install --id=OpenJS.NodeJS --silent --accept-package-agreements
+
+          # 3. Reload Environment Variable agar perintah 'npm' langsung aktif tanpa restart PowerShell
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+          # 4. Install Websockify dan Localtunnel via NPM secara global
+          Write-Host "Menginstal Websockify dan LocalTunnel melalui NPM..." -ForegroundColor Cyan
+          npm install -g @teampanfu/websockify localtunnel
+
 
       - name: idk
-        run: Get-WmiObject Win32_Processor | Select-Object Name, VirtualizationFirmwareEnabled
+        run: |
+          Write-Host "Mengunduh dan mengekstrak komponen noVNC..." -ForegroundColor Cyan
+          # Buat direktori kerja
+          New-Item -ItemType Directory -Force -Path "C:\novnc" | Out-Null
+
+          # Unduh zip source code noVNC versi stabil terbaru
+          $url = "https://github.com/novnc/noVNC/archive/refs/heads/master.zip"
+          $zipPath = "C:\novnc\novnc.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+
+          # Ekstrak file zip dan rapikan foldernya
+          Expand-Archive -Path $zipPath -DestinationPath "C:\novnc\extracted" -Force
+          Move-Item -Path "C:\novnc\extracted\noVNC-1.5.0\*" -Destination "C:\novnc" -Force
+          Remove-Item -Recurse -Force "C:\novnc\extracted", $zipPath
+
+      - name: uia
+        run: |
+          Write-Host "Mengonfigurasi autentikasi VNC..." -ForegroundColor Cyan
+
+          # Set password VNC menjadi '12345678' (Disimpan dalam bentuk Hex di Registry)
+          $registryPath = "HKLM:\SOFTWARE\TightVNC\Server"
+          if (!(Test-Path $registryPath)) { New-Item -Path $registryPath -Force | Out-Null }
+          Set-ItemProperty -Path $registryPath -Name "Password" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
+          Set-ItemProperty -Path $registryPath -Name "ControlPassword" -Value ([byte[]](0x1c,0x2f,0x53,0xbc,0xca,0xb4,0xae,0x22)) -Type Binary
+
+          # Restart Service TightVNC agar membaca konfigurasi baru
+          Restart-Service -Name "tvnserver" -Force
+
+      - name: uiia
+        run: |
+          Write-Host "Menjalankan Websockify dan LocalTunnel di latar belakang..." -ForegroundColor Green
+
+          # 1. Jalankan Websockify di background
+          Start-Job -Name "WebsockifyJob" -ScriptBlock { 
+              websockify 8080 localhost:5900 --web C:\novnc 
+          } | Out-Null
+          
+          # 2. Jalankan LocalTunnel di background
+          Start-Job -Name "LocalTunnelJob" -ScriptBlock { 
+              lt --port 8080 
+          } | Out-Null
+          
+          # 3. Tunggu 5 detik agar LocalTunnel berhasil membuat koneksi ke server
+          Write-Host "Sedang membuat URL publik, mohon tunggu..." -ForegroundColor Cyan
+          Start-Sleep -Seconds 5
+          
+          # 4. Ambil output URL dari LocalTunnel dan tampilkan di layar utama
+          $tunnelOutput = Receive-Job -Name "LocalTunnelJob"
+          $url = ($tunnelOutput | Select-String -Pattern "your url is: (https://.*)").Matches.Groups[1].Value
+          
+          if ($url) {
+              Write-Host "`n==================================================" -ForegroundColor Green
+              Write-Host " BERHASIL! Akses layar Windows Anda via browser:" -ForegroundColor Green
+              Write-Host " URL: $url/vnc.html" -ForegroundColor Yellow
+              Write-Host " Password VNC: 12345678" -ForegroundColor Yellow
+              Write-Host "==================================================" -ForegroundColor Green
+              Write-Host "Jangan tutup jendela PowerShell ini agar koneksi tidak terputus." -ForegroundColor White
+          } else {
+              Write-Host "Gagal mendapatkan URL secara otomatis. Coba cek output manual dengan perintah: Receive-Job -Name LocalTunnelJob" -ForegroundColor Red
+          }
+
+
+         
+       
+
