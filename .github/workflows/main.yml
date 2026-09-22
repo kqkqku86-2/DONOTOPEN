@@ -6,7 +6,7 @@ env:
 
 jobs:
    run-vm:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Clone Repositori
       uses: actions/checkout@v4
